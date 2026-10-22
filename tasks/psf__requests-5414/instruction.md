@@ -11,6 +11,10 @@ Based on PR #774: `InvalidUrl: URL has an invalid label.`
 
 `UnicodeError: encoding with 'idna' codec failed (UnicodeError: label empty or too long)`
 
+## Note for this environment
+
+With the dependency versions installed here (urllib3 1.26.x, idna 3.x), the same call currently surfaces as `urllib3.exceptions.LocationParseError: Failed to parse: '.example.com', label empty or too long` rather than a `UnicodeError`. Either way, the low-level error leaks out of Requests. The expected behaviour is that `requests.get("http://.example.com")` (and any other URL whose host starts with an empty label, i.e. a leading `.`) raises `requests.exceptions.InvalidURL` instead.
+
 ## Reproduction Steps
 
 ```python3
