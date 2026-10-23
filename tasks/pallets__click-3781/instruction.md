@@ -14,3 +14,8 @@ click.edit(filename=str(export_common.path))
 ```
 
 but would be nice if didn't need `str`.
+
+## Clarifications
+
+- Static type checkers (e.g. mypy, Pyright/Pylance) must accept `click.edit(filename=...)` when `filename` is a `str`, a `pathlib.Path` (any `os.PathLike[str]`), or an iterable mixing `str` and path-like values, and such calls must still be typed as returning `None`.
+- At runtime, passing a single path-like `filename` must edit that file, just as a `str` does.

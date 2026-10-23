@@ -12,12 +12,17 @@ if ! python -c 'import click, sys; sys.exit(0 if click.__file__.startswith("/tes
         || pip install --no-cache-dir -e .
 fi
 
+# mypy checks tests/typing/typing_edit.py (pins from uv.lock at the base commit).
+python -c 'import mypy' 2>/dev/null || pip install --no-cache-dir \
+    "mypy==1.20.0" "mypy-extensions==1.1.0" "pathspec==1.0.4" "librt==0.8.1" \
+    "typing-extensions==4.15.0"
+
 # Files modified by test.patch are reset; files it adds are removed.
 git checkout $BASE -- tests/test_termui.py
 rm -f tests/typing/typing_edit.py
 git apply --verbose /tests/test.patch || { echo "failed to apply test.patch"; exit 0; }
 
-# tests/typing/typing_edit.py is a static type-checking fixture (mypy/pyright), not a pytest module.
+# tests/typing/typing_edit.py is a static type-checking fixture, run through mypy by test_edit_pathlib_typing.
 LOG=/logs/verifier/test_output.log
 : '>>>>> Start Test Output'
 pytest -rA -v -p no:cacheprovider tests/test_termui.py 2>&1 | tee "$LOG"

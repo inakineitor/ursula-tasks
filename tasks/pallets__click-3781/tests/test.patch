@@ -1,4 +1,5 @@
 diff --git a/tests/test_termui.py b/tests/test_termui.py
+index 9da8ffb..9ac1754 100644
 --- a/tests/test_termui.py
 +++ b/tests/test_termui.py
 @@ -421,13 +421,13 @@ def test_getchar_windows_exceptions(runner, monkeypatch, key_char, exc):
@@ -17,7 +18,7 @@ diff --git a/tests/test_termui.py b/tests/test_termui.py
  def test_edit(runner):
      with tempfile.NamedTemporaryFile(mode="w") as named_tempfile:
          named_tempfile.write("a\nb\n")
-@@ -448,6 +448,19 @@ def test_edit(runner):
+@@ -448,6 +448,38 @@ def test_edit(runner):
              assert reopened_file.read() == "aTest\nbTest\n"
  
  
@@ -34,11 +35,31 @@ diff --git a/tests/test_termui.py b/tests/test_termui.py
 +    assert file_path.read_text(encoding="UTF-8") == "aTest\nbTest\n"
 +
 +
++def test_edit_pathlib_typing():
++    """Issue #2869: type checkers accept ``os.PathLike`` values for ``filename``."""
++    result = subprocess.run(
++        [
++            sys.executable,
++            "-m",
++            "mypy",
++            "--follow-imports=silent",
++            "--no-incremental",
++            f"--cache-dir={os.devnull}",
++            os.path.join("tests", "typing", "typing_edit.py"),
++        ],
++        cwd=pathlib.Path(__file__).parent.parent,
++        capture_output=True,
++        text=True,
++    )
++    assert result.returncode == 0, result.stdout + result.stderr
++
++
  @pytest.mark.parametrize(
      ("editor_cmd", "filenames", "expected_args"),
      [
 diff --git a/tests/typing/typing_edit.py b/tests/typing/typing_edit.py
 new file mode 100644
+index 0000000..848ba94
 --- /dev/null
 +++ b/tests/typing/typing_edit.py
 @@ -0,0 +1,10 @@
