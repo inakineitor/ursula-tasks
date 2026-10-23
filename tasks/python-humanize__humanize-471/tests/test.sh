@@ -1,61 +1,97 @@
 #!/bin/bash
 set -uo pipefail
 
-TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+BASE=785e5dcc0d0308ad0dff3f6cc0faa7085ad0375b
+TEST_FILES=(tests/test_i18n.py)
+
+cd /testbed
 mkdir -p /logs/verifier
 echo 0 > /logs/verifier/reward.txt
 
-cd /testbed
+if ! python -c "import humanize, sys; sys.exit(0 if humanize.__file__.startswith('/testbed/src/') else 1)" 2>/dev/null; then
+    SETUPTOOLS_SCM_PRETEND_VERSION=4.16.1.dev34 \
+        pip install --no-cache-dir -c /opt/constraints.txt --no-build-isolation -e ".[tests]"
+fi
 
-# Editable install: no reinstall needed.
-git checkout 785e5dcc0d0308ad0dff3f6cc0faa7085ad0375b -- tests/test_i18n.py
-git apply -v "$TESTS_DIR/test.patch" || { echo "Failed to apply test.patch"; exit 0; }
+# Files modified by test.patch: reset to base. Files added by it: none.
+git checkout "$BASE" -- tests/test_i18n.py
+if ! git apply --verbose /tests/test.patch; then
+    echo "failed to apply test.patch"
+    echo '{}' > /logs/verifier/statuses.json
+    exit 0
+fi
 
-# Recompile the gettext catalogs so .po changes take effect (as the project's CI does).
+# Recompile the gettext catalogs so any .po changes take effect (as the project's CI does).
 bash scripts/generate-translation-binaries.sh
 
 LOG=/logs/verifier/test_output.log
 : '>>>>> Start Test Output'
-pytest -rA tests/test_i18n.py 2>&1 | tee "$LOG"
+pytest -rA "${TEST_FILES[@]}" 2>&1 | tee "$LOG"
 : '>>>>> End Test Output'
 
-git checkout 785e5dcc0d0308ad0dff3f6cc0faa7085ad0375b -- tests/test_i18n.py
+COLLECTED=/logs/verifier/collected.txt
+pytest --collect-only -q --color=no "${TEST_FILES[@]}" > "$COLLECTED" 2>&1
 
-python3 - "$LOG" "$TESTS_DIR/tests.json" <<'PY'
-import json, re, sys
+python3 - "$LOG" "$COLLECTED" <<'PY'
+import json, os, re, sys
 
-log_path, spec_path = sys.argv[1], sys.argv[2]
-spec = json.load(open(spec_path))
 ansi = re.compile(r"\x1b\[[0-9;]*m")
-pat = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)\s+(\S.*)$")
+collected = {
+    ansi.sub("", l.rstrip("\n"))
+    for l in open(sys.argv[2], errors="replace")
+    if "::" in l
+}
+
+STATUSES = ("PASSED", "FAILED", "ERROR", "SKIPPED", "XFAIL", "XPASS")
+summary = re.compile(r"^(%s) (.+)$" % "|".join(STATUSES))
 statuses = {}
-with open(log_path, errors="replace") as f:
-    for line in f:
-        line = ansi.sub("", line.rstrip("\n"))
-        m = pat.match(line)
-        if not m:
-            continue
-        status, rest = m.groups()
-        if status == "SKIPPED" and rest.startswith("["):
-            # "SKIPPED [1] path:line: reason" carries no test id
-            continue
-        statuses[rest] = status
-        if " - " in rest:
-            statuses.setdefault(rest.split(" - ", 1)[0], status)
+in_summary = False
+for raw in open(sys.argv[1], errors="replace"):
+    line = ansi.sub("", raw.rstrip("\n"))
+    if re.match(r"^=+ short test summary info =+$", line):
+        in_summary = True
+        continue
+    if not in_summary:
+        continue
+    if re.match(r"^=+ .* =+$", line):
+        in_summary = False
+        continue
+    m = summary.match(line)
+    if not m:
+        continue
+    status, rest = m.groups()
+    if status == "SKIPPED" and rest.startswith("["):
+        # "SKIPPED [n] path:line: reason" carries no test id.
+        continue
+    if status != "PASSED":
+        # Drop a trailing " - message" without truncating ids that contain
+        # spaces: prefer the longest collected id that prefixes the line.
+        known = [t for t in collected if rest == t or rest.startswith(t + " - ")]
+        if known:
+            rest = max(known, key=len)
+        elif " - " in rest:
+            rest = rest.split(" - ", 1)[0]
+    statuses[rest.strip()] = status
 
-ok = True
-for t in spec["FAIL_TO_PASS"]:
-    s = statuses.get(t)
-    if s not in ("PASSED", "XFAIL"):
-        print(f"FAIL_TO_PASS not passing: {t} -> {s}")
-        ok = False
-for t in spec["PASS_TO_PASS"]:
-    s = statuses.get(t)
-    if s not in ("PASSED", "XFAIL", "SKIPPED"):
-        print(f"PASS_TO_PASS not passing: {t} -> {s}")
-        ok = False
+with open("/logs/verifier/statuses.json", "w") as f:
+    json.dump(statuses, f, indent=2, sort_keys=True)
+print(f"parsed {len(statuses)} test statuses")
 
-print("RESULT:", "PASS" if ok else "FAIL")
-open("/logs/verifier/reward.txt", "w").write("1\n" if ok else "0\n")
+reward = 0
+spec_path = "/tests/tests.json"
+if os.path.exists(spec_path):
+    spec = json.load(open(spec_path))
+    ok = True
+    for t in spec.get("FAIL_TO_PASS", []):
+        if statuses.get(t) not in ("PASSED", "XFAIL"):
+            print(f"FAIL_TO_PASS failed: {t} -> {statuses.get(t)}")
+            ok = False
+    for t in spec.get("PASS_TO_PASS", []):
+        if statuses.get(t) not in ("PASSED", "XFAIL", "SKIPPED"):
+            print(f"PASS_TO_PASS failed: {t} -> {statuses.get(t)}")
+            ok = False
+    reward = 1 if ok else 0
+with open("/logs/verifier/reward.txt", "w") as f:
+    f.write(f"{reward}\n")
+print("reward:", reward)
 PY
-cat /logs/verifier/reward.txt
