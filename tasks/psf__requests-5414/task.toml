@@ -6,7 +6,7 @@ name = "swebench-tasks/psf__requests-5414"
 [metadata]
 difficulty = "<15 min fix"
 category = "debugging"
-tags = ["swebench", "python", "requests", "url-parsing", "idna", "exceptions"]
+tags = ["swe-bench", "python", "requests", "url-parsing", "idna", "exceptions"]
 
 [agent]
 timeout_sec = 3000
