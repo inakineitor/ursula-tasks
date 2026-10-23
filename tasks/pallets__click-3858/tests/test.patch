@@ -1,8 +1,7 @@
 diff --git a/tests/test_types/test_Path.py b/tests/test_types/test_Path.py
-index 7461cde..09df7bc 100644
 --- a/tests/test_types/test_Path.py
 +++ b/tests/test_types/test_Path.py
-@@ -4,6 +4,7 @@ import platform
+@@ -4,6 +4,7 @@
  import subprocess
  import sys
  import tempfile
@@ -20,7 +19,6 @@ index 7461cde..09df7bc 100644
 +    assert t.get_args(click.Path[pathlib.Path]) == (pathlib.Path,)
 diff --git a/tests/typing/typing_path.py b/tests/typing/typing_path.py
 new file mode 100644
-index 0000000..f12a5d9
 --- /dev/null
 +++ b/tests/typing/typing_path.py
 @@ -0,0 +1,34 @@
