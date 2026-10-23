@@ -1,5 +1,4 @@
 diff --git a/tests/test_i18n.py b/tests/test_i18n.py
-index 683fe3c..53cc490 100644
 --- a/tests/test_i18n.py
 +++ b/tests/test_i18n.py
 @@ -92,6 +92,10 @@ def test_i18n() -> None:

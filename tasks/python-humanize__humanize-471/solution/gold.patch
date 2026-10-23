@@ -1,5 +1,4 @@
 diff --git a/src/humanize/locale/bn_BD/LC_MESSAGES/humanize.po b/src/humanize/locale/bn_BD/LC_MESSAGES/humanize.po
-index 25b4684..0f7e609 100644
 --- a/src/humanize/locale/bn_BD/LC_MESSAGES/humanize.po
 +++ b/src/humanize/locale/bn_BD/LC_MESSAGES/humanize.po
 @@ -125,7 +125,6 @@ msgstr[0] "হাজার"
