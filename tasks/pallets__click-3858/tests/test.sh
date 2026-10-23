@@ -10,6 +10,9 @@ if ! pip show click 2>/dev/null | grep "^Editable project location: /testbed" >/
         || pip install --no-cache-dir -e .
 fi
 
+pip install --no-cache-dir "mypy==1.20.0" "mypy-extensions==1.1.0" \
+    "pathspec==1.0.4" "librt==0.8.1"
+
 BASE=7944461a80b780d060899c8835acab3c273a04a6
 git checkout $BASE -- tests/test_types/test_Path.py
 rm -f tests/typing/typing_path.py

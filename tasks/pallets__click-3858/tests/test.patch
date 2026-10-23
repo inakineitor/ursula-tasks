@@ -9,7 +9,7 @@ diff --git a/tests/test_types/test_Path.py b/tests/test_types/test_Path.py
  
  import pytest
  
-@@ -183,3 +184,7 @@ def test_path_type(runner, cls, expect):
+@@ -183,3 +184,27 @@ def test_path_type(runner, cls, expect):
      result = runner.invoke(cli, ["a/b/c.txt"], standalone_mode=False)
      assert result.exception is None
      assert result.return_value == expect
@@ -17,11 +17,31 @@ diff --git a/tests/test_types/test_Path.py b/tests/test_types/test_Path.py
 +
 +def test_path_converted_type_parameter_at_runtime():
 +    assert t.get_args(click.Path[pathlib.Path]) == (pathlib.Path,)
++
++
++def test_path_type_static_inference():
++    root = pathlib.Path(__file__).parents[2]
++    typing_file = root / "tests" / "typing" / "typing_path.py"
++    result = subprocess.run(
++        [
++            sys.executable,
++            "-m",
++            "mypy",
++            "--no-incremental",
++            "--cache-dir=/dev/null",
++            "--follow-imports=silent",
++            str(typing_file),
++        ],
++        cwd=root,
++        capture_output=True,
++        text=True,
++    )
++    assert result.returncode == 0, result.stdout + result.stderr
 diff --git a/tests/typing/typing_path.py b/tests/typing/typing_path.py
 new file mode 100644
 --- /dev/null
 +++ b/tests/typing/typing_path.py
-@@ -0,0 +1,34 @@
+@@ -0,0 +1,38 @@
 +import os
 +import pathlib
 +
@@ -29,9 +49,13 @@ new file mode 100644
 +
 +import click
 +
-+# Without ``path_type``, ``convert`` returns the value it was given.
-+assert_type(click.Path().convert("a/b.txt", None, None), str | bytes | os.PathLike[str])
-+assert_type(click.prompt("File", type=click.Path()), str | bytes | os.PathLike[str])
++# Without ``path_type``, the converted value is still a str, bytes, or path-like.
++default_value: str | bytes | os.PathLike[str] = click.Path().convert(
++    "a/b.txt", None, None
++)
++default_prompt: str | bytes | os.PathLike[str] = click.prompt(
++    "File", type=click.Path()
++)
 +
 +# ``path_type`` narrows the converted value's type for ``convert`` and ``prompt``.
 +assert_type(click.Path(path_type=str).convert("a/b.txt", None, None), str)
@@ -41,18 +65,18 @@ new file mode 100644
 +)
 +assert_type(click.prompt("File", type=click.Path(path_type=str)), str)
 +assert_type(click.prompt("File", type=click.Path(path_type=pathlib.Path)), pathlib.Path)
++assert_type(
++    click.prompt(
++        "Enter a name", type=click.Path(file_okay=False, path_type=pathlib.Path)
++    ),
++    pathlib.Path,
++)
 +
 +assert_type(click.Path(path_type=pathlib.Path)("a/b.txt"), pathlib.Path)
-+assert_type(click.Path(path_type=pathlib.Path)(None), None)
 +
 +# The class can be parameterized explicitly.
 +param_type: click.Path[pathlib.Path] = click.Path(exists=True, path_type=pathlib.Path)
 +assert_type(param_type.convert("a/b.txt", None, None), pathlib.Path)
-+assert_type(param_type.coerce_path_result("a/b.txt"), pathlib.Path)
 +
 +general: click.ParamType[str | bytes | os.PathLike[str]] = click.Path()
 +specific: click.ParamType[pathlib.Path] = click.Path(path_type=pathlib.Path)
-+
-+assert_type(
-+    click.Path(path_type=pathlib.Path)(pathlib.PurePosixPath("a/b.txt")), pathlib.Path
-+)

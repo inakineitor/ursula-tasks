@@ -59,3 +59,8 @@ Environment:
 - Python version: 3.14
 - Click version: 8.5.0
 
+
+## Clarifications
+
+- `click.Path` should take a single type parameter, the type of the converted value, so that it can be parameterized explicitly (for example `click.Path[pathlib.Path]`), both in annotations and at runtime (`typing.get_args(click.Path[pathlib.Path]) == (pathlib.Path,)`).
+- With `path_type` given (e.g. `str`, `bytes`, `pathlib.Path`), mypy should infer that type for `click.Path(...).convert(...)`, for calling the `click.Path` instance on a value, and for `click.prompt(..., type=click.Path(...))`. Without `path_type`, the inferred type must remain compatible with `str | bytes | os.PathLike[str]`.
