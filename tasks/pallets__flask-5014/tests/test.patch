@@ -1,5 +1,4 @@
 diff --git a/tests/test_blueprints.py b/tests/test_blueprints.py
-index d46b769b..76cee660 100644
 --- a/tests/test_blueprints.py
 +++ b/tests/test_blueprints.py
 @@ -256,6 +256,11 @@ def test_dotted_name_not_allowed(app, client):
