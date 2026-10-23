@@ -58,3 +58,4 @@ Environment:
 
 - Python version: 3.14
 - Click version: 8.5.0
+
